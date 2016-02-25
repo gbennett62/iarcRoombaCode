@@ -18,9 +18,11 @@
 // 3 will try to escape the a following object (manual closeness sensor)
 int path = 2;
 // distance between wheels
-int Rbase = ;
-// conditions for run
-int Rcenter = ;
+int Rbase = .258; // m
+// conditions for run 2
+int Rcenter = 1; // m
+// condition for run 1
+int a = 1; // m
 // Set to true to force only the maximum noise rather than random
 const boolean MAX_NOISE_TEST = false;
 
@@ -93,6 +95,16 @@ void circRunStart()
   Serial.println("State Change: TargetRun");
   coiSafeMode();
   coiDriveDirect(robotSpeed*(Rcenter-.5*Rbase)/(Rcenter+.5*Rbase), robotSpeed);
+  digitalWrite(greenLed, HIGH);
+  digitalWrite(redLed, LOW);
+  //lastNoise = millis();
+  //lastReverse = millis();
+}
+void infRunStart()
+{
+  Serial.println("State Change: TargetRun");
+  coiSafeMode();
+  coiDriveDirect(robotSpeed*(a/2-.5*Rbase)/(a/2+.5*Rbase), robotSpeed);
   digitalWrite(greenLed, HIGH);
   digitalWrite(redLed, LOW);
   //lastNoise = millis();
@@ -240,7 +252,7 @@ void trgtRun()
   }
 }
 
-void circRun()
+void genRun()
 {
   if(isWaitSig())
   {
@@ -258,7 +270,6 @@ void circRun()
     }
   }
 }
-
 
 void vNoise()
 {
@@ -303,9 +314,26 @@ void vReverse()
   }
 }
 
+void vReverseRand()
+{
+  unsigned long randRevLength = random(reverseLength/2,3*reverseLength/2)
+  if(isWaitSig())
+  {
+    fsm.transitionTo(TargetWait);
+  }  
+  else if (isTopTouch())
+  {
+    fsm.transitionTo(TopTouch);
+  } 
+  else if (isTimeUp(&beginReverse, &randRevLength))
+  {
+    fsm.transitionTo(TargetRun);
+  }
+}
+
 void trgtCrash()
 {
-  fsm.transitionTo(Reverse);
+  fsm.transitionTo(ReverseRand);
 }
 
 void touch()

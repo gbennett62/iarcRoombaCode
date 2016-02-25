@@ -51,8 +51,9 @@ State Reverse =           State(vReverseStart, vReverse, nullFunc);
 State TargetCollision =   State(trgtCrashStart, trgtCrash, nullFunc);
 State TopTouch =          State(touchStart, touch, nullFunc);
 //New
-State CircleRun =         State(circRunStart, circRun, nullFunc);
-State InfRun =         State(infRunStart, infRun, nullFunc);
+State CircleRun =         State(circRunStart, genRun, nullFunc);
+State InfRun =            State(infRunStart, genRun, nullFunc);
+State ReverseRand =       State(vReverseStart, vReverseRand, nullFunc);
 
 FSM fsm = FSM(Start);     // Initialize state machine, set start state
 
