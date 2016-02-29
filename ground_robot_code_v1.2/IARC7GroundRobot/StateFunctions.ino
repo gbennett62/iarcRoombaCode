@@ -16,6 +16,7 @@
 // 1 is in an infinity loop
 // 2 is a circle
 // 3 will try to escape the a following object (manual closeness sensor)
+const int pi = 3.14159265;
 int path = 2;
 // distance between wheels
 int Rbase = .258; // m
@@ -23,6 +24,10 @@ int Rbase = .258; // m
 int Rcenter = 1; // m
 // condition for run 1
 int a = 1; // m
+boolean hasRunInitial = false;
+unsigned int infInitInterval = 2*pi/3*(a/2+Rbase/2)/robotSpeed;
+unsigned int lineInterval = sqrt(3)*a/robotSpeed;
+unsigned int circleInterval = 4*pi/3*(a/2+Rbase/2)/robotSpeed;
 // Set to true to force only the maximum noise rather than random
 const boolean MAX_NOISE_TEST = false;
 
@@ -86,29 +91,33 @@ void trgtRunStart()
   coiDriveDirect(robotSpeed, robotSpeed);
   digitalWrite(greenLed, HIGH);
   digitalWrite(redLed, LOW);
-  //lastNoise = millis();
-  //lastReverse = millis();
+  lastNoise = millis();
+  lastReverse = millis();
 }
 // new
 void circRunStart()
 {
+  if (path == 1)
+  {
+  Rcenter = a/2;
+  }
   Serial.println("State Change: TargetRun");
   coiSafeMode();
   coiDriveDirect(robotSpeed*(Rcenter-.5*Rbase)/(Rcenter+.5*Rbase), robotSpeed);
   digitalWrite(greenLed, HIGH);
   digitalWrite(redLed, LOW);
-  //lastNoise = millis();
-  //lastReverse = millis();
+  startOfCycle = millis();
 }
-void infRunStart()
+
+void lineRunStart()
 {
   Serial.println("State Change: TargetRun");
   coiSafeMode();
-  coiDriveDirect(robotSpeed*(a/2-.5*Rbase)/(a/2+.5*Rbase), robotSpeed);
+  coiDriveDirect(robotSpeed, robotSpeed);
   digitalWrite(greenLed, HIGH);
   digitalWrite(redLed, LOW);
-  //lastNoise = millis();
-  //lastReverse = millis();
+  startOfCycle = millis();
+  
 }
 
 void vNoiseStart()
@@ -252,12 +261,58 @@ void trgtRun()
   }
 }
 
-void genRun()
+void circRun()
 {
   if(isWaitSig())
   {
     fsm.transitionTo(TargetWait);
   } 
+  else if (path == 1)
+  {
+    if(~hasRunInitial)
+    {
+      if(isTimeUp(&startOfCycle, &initInfInterval))
+      {
+        fsm.transitionTo(LineRun);
+      }
+    }
+    else
+    {
+      if(isTimeUp(&startOfCycle, &circleInterval))
+      {
+        fsm.transitionTo(LineRun);
+      }
+    }
+  }
+  else
+  {
+    if(coiCheckBump() != 0 )
+    {
+      fsm.transitionTo(TargetCollision);
+    } 
+    else
+    {
+      delay(15);
+    }
+  }
+}
+
+void lineRun()
+{
+  if(isWaitSig())
+  {
+    fsm.transitionTo(TargetWait);
+  } 
+  else if (path == 1)
+  {
+    if(~hasRunInitial)
+    {
+      if(isTimeUp(&startOfCycle, &lineInterval))
+      {
+        fsm.transitionTo(CircleRun);
+      }
+    }
+  }
   else
   {
     if(coiCheckBump() != 0 )
