@@ -17,13 +17,14 @@
 // 2 is a circle
 // 3 will try to escape the a following object (manual closeness sensor)
 const int pi = 3.14159265;
-int path = 2;
+int path = 0;
 // distance between wheels
 int Rbase = .258; // m
 // conditions for run 2
 int Rcenter = 1; // m
 // condition for run 1
 int a = 1; // m
+unsigned int infCount = 0;
 boolean hasRunInitial = false;
 unsigned int infInitInterval = 2*pi/3*(a/2+Rbase/2)/robotSpeed;
 unsigned int lineInterval = sqrt(3)*a/robotSpeed;
@@ -66,7 +67,9 @@ void obsRunStart()
   digitalWrite(redLed, HIGH);
   digitalWrite(greenLed, LOW);
   // This 9mm/s offset get us close to 5m radius circle trajectory
-  coiDriveDirect(robotSpeed - 9, robotSpeed + 9);
+  //coiDriveDirect(robotSpeed - 9, robotSpeed + 9);
+  // Temporary change
+  coiDriveDirect(robotSpeed, robotSpeed)
 }
 
 void obsCrashStart()
@@ -100,10 +103,18 @@ void circRunStart()
   if (path == 1)
   {
   Rcenter = a/2;
+  infCount = infCount + 1;
   }
   Serial.println("State Change: TargetRun");
   coiSafeMode();
+  if (infCount % 2 == 0)
+  {
   coiDriveDirect(robotSpeed*(Rcenter-.5*Rbase)/(Rcenter+.5*Rbase), robotSpeed);
+  }
+  else
+  {
+  coiDriveDirect(robotSpeed*(Rcenter-.5*Rbase)/(Rcenter+.5*Rbase), robotSpeed);
+  }
   digitalWrite(greenLed, HIGH);
   digitalWrite(redLed, LOW);
   startOfCycle = millis();
@@ -192,15 +203,16 @@ void obsCrash()
   } 
   else
   {
-    byte bump = coiCheckBump();
-    if(bump == 0)
-    {
-      fsm.transitionTo(ObstacleRun);
-    } 
-    else
-    {
-      delay(15);
-    }
+//    byte bump = coiCheckBump();
+//    if(bump == 0)
+//    {
+//      fsm.transitionTo(ObstacleRun);
+//    } 
+//    else
+//    {
+//      delay(15);
+//    }
+      fsm.transitionTo(Reverse);
   }
 }
 
@@ -210,7 +222,7 @@ void trgtWait()
   {
     fsm.transitionTo(TargetRun);
   }
-  else 
+  if else (isRunSig() && path == 1)
   {
     fsm.transitionTo(CircleRun);
   }
@@ -359,13 +371,14 @@ void vReverse()
   {
     fsm.transitionTo(TargetWait);
   }  
-  else if (isTopTouch())
-  {
-    fsm.transitionTo(TopTouch);
-  } 
+//  else if (isTopTouch())
+//  {
+//    fsm.transitionTo(TopTouch);
+//  } 
   else if (isTimeUp(&beginReverse, &reverseLength))
   {
-    fsm.transitionTo(TargetRun);
+    //fsm.transitionTo(TargetRun);
+    fsm.transitionTo(ObstacleRun);
   }
 }
 
