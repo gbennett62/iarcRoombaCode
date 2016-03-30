@@ -29,6 +29,7 @@ boolean hasRunInitial = false;
 unsigned int infInitInterval = 2*pi/3*(a/2+Rbase/2)/robotSpeed;
 unsigned int lineInterval = sqrt(3)*a/robotSpeed;
 unsigned int circleInterval = 4*pi/3*(a/2+Rbase/2)/robotSpeed;
+unsigned long startOfCycle;
 // Set to true to force only the maximum noise rather than random
 const boolean MAX_NOISE_TEST = false;
 
@@ -69,7 +70,7 @@ void obsRunStart()
   // This 9mm/s offset get us close to 5m radius circle trajectory
   //coiDriveDirect(robotSpeed - 9, robotSpeed + 9);
   // Temporary change
-  coiDriveDirect(robotSpeed, robotSpeed)
+  coiDriveDirect(robotSpeed, robotSpeed);
 }
 
 void obsCrashStart()
@@ -222,10 +223,10 @@ void trgtWait()
   {
     fsm.transitionTo(TargetRun);
   }
-  if else (isRunSig() && path == 1)
-  {
-    fsm.transitionTo(CircleRun);
-  }
+//  else (isRunSig() && path == 1)
+//  {
+//    //fsm.transitionTo(CircleRun);
+//  }
 }
 
 void trgtRun()
@@ -273,70 +274,70 @@ void trgtRun()
   }
 }
 
-void circRun()
-{
-  if(isWaitSig())
-  {
-    fsm.transitionTo(TargetWait);
-  } 
-  else if (path == 1)
-  {
-    if(~hasRunInitial)
-    {
-      if(isTimeUp(&startOfCycle, &initInfInterval))
-      {
-        fsm.transitionTo(LineRun);
-      }
-    }
-    else
-    {
-      if(isTimeUp(&startOfCycle, &circleInterval))
-      {
-        fsm.transitionTo(LineRun);
-      }
-    }
-  }
-  else
-  {
-    if(coiCheckBump() != 0 )
-    {
-      fsm.transitionTo(TargetCollision);
-    } 
-    else
-    {
-      delay(15);
-    }
-  }
-}
+//void circRun()
+//{
+//  if(isWaitSig())
+//  {
+//    fsm.transitionTo(TargetWait);
+//  } 
+//  else if (path == 1)
+//  {
+//    if(~hasRunInitial)
+//    {
+//      if(isTimeUp(&startOfCycle, &initInfInterval))
+//      {
+//        fsm.transitionTo(LineRun);
+//      }
+//    }
+//    else
+//    {
+//      if(isTimeUp(&startOfCycle, &circleInterval))
+//      {
+//        fsm.transitionTo(LineRun);
+//      }
+//    }
+//  }
+//  else
+//  {
+//    if(coiCheckBump() != 0 )
+//    {
+//      fsm.transitionTo(TargetCollision);
+//    } 
+//    else
+//    {
+//      delay(15);
+//    }
+//  }
+//}
 
-void lineRun()
-{
-  if(isWaitSig())
-  {
-    fsm.transitionTo(TargetWait);
-  } 
-  else if (path == 1)
-  {
-    if(~hasRunInitial)
-    {
-      if(isTimeUp(&startOfCycle, &lineInterval))
-      {
-        fsm.transitionTo(CircleRun);
-      }
-    }
-  }
-  else
-  {
-    if(coiCheckBump() != 0 )
-    {
-      fsm.transitionTo(TargetCollision);
-    } 
-    else
-    {
-      delay(15);
-    }
-  }
-}
+//void lineRun()
+//{
+//  if(isWaitSig())
+//  {
+//    fsm.transitionTo(TargetWait);
+//  } 
+//  else if (path == 1)
+//  {
+//    if(~hasRunInitial)
+//    {
+//      if(isTimeUp(&startOfCycle, &lineInterval))
+//      {
+//        fsm.transitionTo(CircleRun);
+//      }
+//    }
+//  }
+//  else
+//  {
+//    if(coiCheckBump() != 0 )
+//    {
+//      fsm.transitionTo(TargetCollision);
+//    } 
+//    else
+//    {
+//      delay(15);
+//    }
+//  }
+//}
 
 void vNoise()
 {
@@ -384,7 +385,7 @@ void vReverse()
 
 void vReverseRand()
 {
-  unsigned long randRevLength = random(reverseLength/2,3*reverseLength/2)
+  unsigned int randRevLength = random(reverseLength/2,3*reverseLength/2);
   if(isWaitSig())
   {
     fsm.transitionTo(TargetWait);
@@ -401,7 +402,7 @@ void vReverseRand()
 
 void trgtCrash()
 {
-  fsm.transitionTo(ReverseRand);
+  fsm.transitionTo(Reverse);
 }
 
 void touch()
