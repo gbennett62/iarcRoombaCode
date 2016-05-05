@@ -51,9 +51,9 @@ State Reverse =           State(vReverseStart, vReverse, nullFunc);
 State TargetCollision =   State(trgtCrashStart, trgtCrash, nullFunc);
 State TopTouch =          State(touchStart, touch, nullFunc);
 //New
-//State CircleRun =         State(circRunStart, cirlcRun, nullFunc);
-//State LineRun =            State(lineRunStart, lineRun, nullFunc);
-//State ReverseRand =       State(vReverseStart, vReverseRand, nullFunc);
+State CircleRun =         State(circRunStart, circRun, nullFunc); 
+State LineRun =            State(lineRunStart, lineRun, nullFunc);
+State ReverseRand =       State(vReverseStart, vReverseRand, nullFunc); // Reverse is from 90 to 270 degrees and is random
 
 FSM fsm = FSM(Start);     // Initialize state machine, set start state
 

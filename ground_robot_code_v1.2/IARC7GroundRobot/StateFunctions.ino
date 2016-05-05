@@ -11,25 +11,27 @@
  *  permissions requests.
  *
  ******************************************************************************/
+// If switch is set to object
+// The roomba travels in a straight line and 
+// If switch is set to target
 // Path Differentiator
-// 0 has competition conditions
-// 1 is in an infinity loop
+// 0 has competition conditions with random reverse
+// 1 is in an infinity loop: Starts at the top of the infinity loop turning left
 // 2 is a circle
-// 3 will try to escape the a following object (manual closeness sensor)
-const int pi = 3.14159265;
-int path = 0;
+const double pi = 3.14159265;
+int path = 1;
 // distance between wheels
-int Rbase = .258; // m
+double Rbase = .258; // m
 // conditions for run 2
-int Rcenter = 1; // m
+double Rcenter = .3; // m
 // condition for run 1
-int a = 1; // m
+double a = .5; // m
 unsigned int infCount = 0;
 boolean hasRunInitial = false;
-unsigned int infInitInterval = 2*pi/3*(a/2+Rbase/2)/robotSpeed;
-unsigned int lineInterval = sqrt(3)*a/robotSpeed;
-unsigned int circleInterval = 4*pi/3*(a/2+Rbase/2)/robotSpeed;
-unsigned long startOfCycle;
+unsigned int infInitInterval = round(1000000*2*pi/3*((double)a/2+Rbase/2)/(double)robotSpeed); // time in milliseconds of the initial circle cycle for path 1
+unsigned int lineInterval = round(1000000*sqrt(3)*(double)a/robotSpeed); // time in milliseconds of the line interval for path 1
+unsigned int circleInterval = round(1000000*4*pi/3*((double)a/2+Rbase/2)/(double)robotSpeed); // time in milliseconds of the circle interval for path 1
+unsigned long startOfCycle; 
 // Set to true to force only the maximum noise rather than random
 const boolean MAX_NOISE_TEST = false;
 
@@ -45,14 +47,51 @@ unsigned int noiseLength = 850;
 unsigned long beginNoise = 0;
 // Time needed to reverse trajectory
 unsigned int reverseLength = 2456; // .33/2 m/s * pi * wheelbase / 2
+long temp = 0;
+unsigned int randRevLength =reverseLength;
 unsigned long beginReverse = 0;
 // Time needed to spin 45 degrees
 unsigned int topTouchTime = reverseLength/4;
 unsigned long beginTopTouch = 0;
 boolean isManuevering = false;
+boolean hasCalcLength = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 // State Machine Functions for Entering a State
+
+// new
+void circRunStart()
+{
+  if (path == 1)
+  {
+    Rcenter = (double)a/2;
+    infCount = infCount + 1;
+  }
+  Serial.println("State Change: CircleRun");
+  coiSafeMode();
+  if (infCount % 2 == 0)
+  {
+    coiDriveDirect(robotSpeed*(Rcenter-.5*Rbase)/(Rcenter+.5*Rbase), robotSpeed);
+  }
+  else
+  {
+    coiDriveDirect(robotSpeed, robotSpeed*(Rcenter-.5*Rbase)/(Rcenter+.5*Rbase));
+  }
+  digitalWrite(greenLed, HIGH);
+  digitalWrite(redLed, LOW);
+  startOfCycle = millis();
+}
+
+void lineRunStart()
+{
+  Serial.println("State Change: LineRun");
+  coiSafeMode();
+  coiDriveDirect(robotSpeed, robotSpeed);
+  digitalWrite(greenLed, HIGH);
+  digitalWrite(redLed, LOW);
+  startOfCycle = millis();
+  
+}
 
 void obsWaitStart()
 {
@@ -98,39 +137,7 @@ void trgtRunStart()
   lastNoise = millis();
   lastReverse = millis();
 }
-// new
-void circRunStart()
-{
-  if (path == 1)
-  {
-  Rcenter = a/2;
-  infCount = infCount + 1;
-  }
-  Serial.println("State Change: TargetRun");
-  coiSafeMode();
-  if (infCount % 2 == 0)
-  {
-  coiDriveDirect(robotSpeed*(Rcenter-.5*Rbase)/(Rcenter+.5*Rbase), robotSpeed);
-  }
-  else
-  {
-  coiDriveDirect(robotSpeed*(Rcenter-.5*Rbase)/(Rcenter+.5*Rbase), robotSpeed);
-  }
-  digitalWrite(greenLed, HIGH);
-  digitalWrite(redLed, LOW);
-  startOfCycle = millis();
-}
 
-void lineRunStart()
-{
-  Serial.println("State Change: TargetRun");
-  coiSafeMode();
-  coiDriveDirect(robotSpeed, robotSpeed);
-  digitalWrite(greenLed, HIGH);
-  digitalWrite(redLed, LOW);
-  startOfCycle = millis();
-  
-}
 
 void vNoiseStart()
 {
@@ -168,6 +175,73 @@ void touchStart()
 
 ////////////////////////////////////////////////////////////////////////////////
 // State Machine Functions for Updating a State
+
+void circRun()
+{
+  if(isWaitSig())
+  {
+    fsm.transitionTo(TargetWait);
+  } 
+  else if (path == 1)
+  {
+    //Serial.println(circleInterval);
+    if(!hasRunInitial)
+    {
+      if(isTimeUp(&startOfCycle, &infInitInterval))
+      {
+        hasRunInitial = true;
+        fsm.transitionTo(LineRun);
+      }
+    }
+    else
+    {
+      if(isTimeUp(&startOfCycle, &circleInterval))
+      {
+        fsm.transitionTo(LineRun);
+      }
+    }
+  }
+  else
+  {
+    if(coiCheckBump() != 0 )
+    {
+      fsm.transitionTo(TargetCollision);
+    } 
+    else
+    {
+      delay(15);
+    }
+  }
+}
+
+void lineRun()
+{
+  if(isWaitSig())
+  {
+    fsm.transitionTo(TargetWait);
+  } 
+  else if (path == 1)
+  {
+//    if(~hasRunInitial)
+//    {
+      if(isTimeUp(&startOfCycle, &lineInterval))
+      {
+        fsm.transitionTo(CircleRun);
+      }
+//    }
+  }
+  else
+  {
+    if(coiCheckBump() != 0 )
+    {
+      fsm.transitionTo(TargetCollision);
+    } 
+    else
+    {
+      delay(15);
+    }
+  }
+}
 
 void obsWait()
 {
@@ -219,14 +293,21 @@ void obsCrash()
 
 void trgtWait()
 {
-  if(isRunSig() && path == 0)
-  {
-    fsm.transitionTo(TargetRun);
-  }
-//  else (isRunSig() && path == 1)
-//  {
-//    //fsm.transitionTo(CircleRun);
-//  }
+   if(isRunSig())
+   {
+      if(path == 0)
+      {
+        fsm.transitionTo(TargetRun);
+      }
+      else if (path == 1)
+      {
+        fsm.transitionTo(CircleRun);
+      }
+      else if (path == 2)
+      {
+        fsm.transitionTo(CircleRun);
+      }
+   }
 }
 
 void trgtRun()
@@ -255,89 +336,11 @@ void trgtRun()
     } 
     else
     {
-      // Manuel Control
-      // seemed immediatly revert back to orginal path unless the button was held
-      // Next experiment
-      // Hold in lap but DO NOT COMPRESS BUMBPER
-//      if(!isManuevering && digitalRead(runSigPin))
-//      {
-//        coiDriveDirect(robotSpeed, 0);
-//        isManuevering = true;
-//      }
-//      else if (isManuevering && digitalRead(runSigPin))
-//      {
-//        coiDriveDirect(robotSpeed, robotSpeed);
-//        isManuevering = false;
-//      }
       delay(15);
     }
   }
 }
 
-//void circRun()
-//{
-//  if(isWaitSig())
-//  {
-//    fsm.transitionTo(TargetWait);
-//  } 
-//  else if (path == 1)
-//  {
-//    if(~hasRunInitial)
-//    {
-//      if(isTimeUp(&startOfCycle, &initInfInterval))
-//      {
-//        fsm.transitionTo(LineRun);
-//      }
-//    }
-//    else
-//    {
-//      if(isTimeUp(&startOfCycle, &circleInterval))
-//      {
-//        fsm.transitionTo(LineRun);
-//      }
-//    }
-//  }
-//  else
-//  {
-//    if(coiCheckBump() != 0 )
-//    {
-//      fsm.transitionTo(TargetCollision);
-//    } 
-//    else
-//    {
-//      delay(15);
-//    }
-//  }
-//}
-
-//void lineRun()
-//{
-//  if(isWaitSig())
-//  {
-//    fsm.transitionTo(TargetWait);
-//  } 
-//  else if (path == 1)
-//  {
-//    if(~hasRunInitial)
-//    {
-//      if(isTimeUp(&startOfCycle, &lineInterval))
-//      {
-//        fsm.transitionTo(CircleRun);
-//      }
-//    }
-//  }
-//  else
-//  {
-//    if(coiCheckBump() != 0 )
-//    {
-//      fsm.transitionTo(TargetCollision);
-//    } 
-//    else
-//    {
-//      delay(15);
-//    }
-//  }
-//}
 
 void vNoise()
 {
@@ -378,14 +381,19 @@ void vReverse()
 //  } 
   else if (isTimeUp(&beginReverse, &reverseLength))
   {
-    //fsm.transitionTo(TargetRun);
     fsm.transitionTo(ObstacleRun);
   }
 }
 
 void vReverseRand()
 {
-  unsigned int randRevLength = random(reverseLength/2,3*reverseLength/2);
+  unsigned int randNum = (unsigned int) random(51);
+  if (!hasCalcLength) {
+    randRevLength =  reverseLength/2+reverseLength*randNum/50;
+    hasCalcLength = true;
+    //Serial.println(randRevLength);
+    Serial.println(hasCalcLength);
+  }
   if(isWaitSig())
   {
     fsm.transitionTo(TargetWait);
@@ -396,13 +404,14 @@ void vReverseRand()
   } 
   else if (isTimeUp(&beginReverse, &randRevLength))
   {
+     hasCalcLength = false;
     fsm.transitionTo(TargetRun);
   }
 }
 
 void trgtCrash()
 {
-  fsm.transitionTo(Reverse);
+  fsm.transitionTo(ReverseRand);
 }
 
 void touch()
